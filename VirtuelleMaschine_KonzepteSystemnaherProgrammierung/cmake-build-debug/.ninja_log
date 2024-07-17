@@ -1,0 +1,6 @@
+# ninja log v5
+3	314	6948069689078769	build.ninja	b8f8e4027941ec09
+14	129	6931787796591010	CMakeFiles/KSP.dir/programLoader.c.obj	dcd7007ff5468505
+2	133	6931787796636695	CMakeFiles/KSP.dir/main.c.obj	9fc5739374ba261b
+9	162	6931787796926864	CMakeFiles/KSP.dir/stack.c.obj	63e07e36354e3ec0
+126	433	6930919118937933	KSP.exe	b65eb9dddc9caa5d

@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s
+
+rule_files:
+  - '/prometheus/rules.yml'
+
+scrape_configs:
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['reverse-proxy:8080']
+  - job_name: 'nodeexporter'
+    static_configs:
+      - targets: ['strix-nodeexporter:9100']
+
+alerting:
+  alertmanagers:
+    - scheme: http
+      static_configs:
+        - targets: [ 'strix-alertmanager:9093' ]

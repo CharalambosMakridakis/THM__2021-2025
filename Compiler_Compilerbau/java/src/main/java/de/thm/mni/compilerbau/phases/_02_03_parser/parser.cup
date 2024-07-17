@@ -1,0 +1,197 @@
+package de.thm.mni.compilerbau.phases._02_03_parser;
+
+import java.util.List;
+import java.util.LinkedList;
+import java_cup.runtime.*;
+import de.thm.mni.compilerbau.phases._01_scanner.Scanner;
+import de.thm.mni.compilerbau.absyn.*;
+import de.thm.mni.compilerbau.table.Identifier;
+import de.thm.mni.compilerbau.utils.SplError;
+import de.thm.mni.compilerbau.CommandLineOptions;
+
+parser code {:
+  public CommandLineOptions options = null;
+
+  public void syntax_error(Symbol currentToken) {
+    throw SplError.SyntaxError(new Position(currentToken.left, currentToken.right), ((Scanner)getScanner()).yytext());
+  }
+  
+  /**
+   * @return An empty list. (Uses LinkedList)
+   */
+  public static <E> List<E> nil() {
+      return new LinkedList<E>();
+  }
+  
+  /**
+   * Constructs a list from a head and a tail without modifying the tail (Uses LinkedList).
+   * Use this as a helper if you don't want to deal with constructing lists manually.
+   *
+   * @param head The head of the list
+   * @param tail The tail of the list
+   * @return A list containing the head element and all elements of tail
+   */
+  public static <E> List<E> cons(E head, List<E> tail) {
+    List<E> copy = new LinkedList(tail);
+    copy.add(0, head);
+    return copy;
+  }
+:}
+
+/* Terminals/Tokens */
+terminal LBRACK, RBRACK, LPAREN, RPAREN, LCURL, RCURL;         //Braces, parenthesis, brackets
+terminal LT, LE, GT, GE, NE, EQ;                               //Comparison operators
+terminal PLUS, MINUS, STAR, SLASH;                             //Arithmetic operators
+terminal ASGN, COMMA, COLON, SEMIC;                            //Other delimiters
+terminal TYPE, PROC, ARRAY, OF, REF, VAR, IF, ELSE, WHILE;     //Keywords
+
+terminal Identifier IDENT;    //Identifiers
+terminal Integer INTLIT;       //Integer literals
+
+/* Non-terminals */
+non terminal Program program;
+non terminal List<GlobalDeclaration> GlobalDeclarationList;
+non terminal ProcedureDeclaration ProcedureDeclaration;
+non terminal CallStatement ProcCall;
+non terminal Statement Statement;
+non terminal Expression Expression;
+non terminal Statement WhileStatement;
+non terminal List<ParameterDeclaration> ParameterList;
+non terminal ParameterDeclaration Parameter;
+non terminal List<ParameterDeclaration> Parameters;
+non terminal CompoundStatement CompoundStatement;
+
+non terminal Expression AdditiveExpression;
+non terminal Expression ComparisonExpression;
+non terminal Expression UnaryExpression;
+non terminal Expression PrimaryExpression;
+non terminal Expression MultiplicativeExpression;
+
+non terminal AssignStatement VariableAssignment;
+non terminal IfStatement IfStatement;
+non terminal TypeDeclaration TypeDef;
+non terminal TypeExpression TypeExpression;
+non terminal VariableDeclaration VariableDeclaration;
+non terminal List<Expression> ArgumentList;
+non terminal List<Expression> Arguments;
+non terminal GlobalDeclaration GlobalDeclaration;
+non terminal List<Statement> StatementList;
+non terminal Variable Variable;
+non terminal List<VariableDeclaration> VariableDeclarationList;
+
+start with program;
+
+
+// letzer Fehler IF-Statement
+
+program ::= GlobalDeclarationList:declarations {: RESULT = new Program(new Position(declarationsleft, declarationsright), declarations); :};
+
+GlobalDeclarationList ::= GlobalDeclaration:head GlobalDeclarationList:tail {: RESULT = cons(head, tail); :}
+                    | {: RESULT = nil(); :};
+
+
+GlobalDeclaration ::= ProcedureDeclaration:id {: RESULT = id; :}
+                    | TypeDef:id {: RESULT = id; :};
+
+
+
+
+VariableDeclaration ::= VAR IDENT:name COLON TypeExpression:typeEx SEMIC {: RESULT = new VariableDeclaration(new Position(nameleft, nameright), name, typeEx); :};
+
+ProcedureDeclaration ::= PROC IDENT:name LPAREN ParameterList:parameters RPAREN LCURL VariableDeclarationList:variables StatementList:body RCURL {:RESULT = new ProcedureDeclaration(new Position(nameleft, nameright), name, parameters, variables, body); :};
+
+VariableDeclarationList ::= VariableDeclaration:head VariableDeclarationList:tail {: RESULT = cons(head, tail); :}
+                    | {: RESULT = nil(); :};
+
+
+//sehr fragwürdig
+ParameterList ::= Parameters:id {: RESULT = id; :}
+                    | {: RESULT = nil(); :};
+
+Parameters ::= Parameter:head {: RESULT = cons(head, nil());  :}
+                    | Parameter:head COMMA Parameters:tail {: RESULT = cons(head,tail); :};
+
+Parameter ::= REF:ref IDENT:name COLON TypeExpression:typeEx {: RESULT = new ParameterDeclaration(new Position(nameleft, nameright), name, typeEx, true); :}
+                    | IDENT:name COLON TypeExpression:typeEx {: RESULT = new ParameterDeclaration(new Position(nameleft, nameright), name, typeEx, false); :};
+
+
+StatementList ::= Statement:head StatementList:tail {: RESULT = cons(head, tail); :}
+                    | {: RESULT = nil(); :};
+
+CompoundStatement ::= LCURL StatementList:id RCURL {: RESULT = new CompoundStatement(new Position(idleft, idright), id); :};
+
+Statement ::= ProcCall:id {: RESULT = id; :}
+                    | VariableAssignment:id {: RESULT = id; :}
+                    | IfStatement:id {: RESULT = id; :}
+                    | WhileStatement:id {: RESULT = id; :}
+                    | CompoundStatement:id {: RESULT = id; :}
+                    | SEMIC:id {: RESULT = new EmptyStatement(new Position(idleft, idright));:};
+
+
+
+//ProcedureCall
+ProcCall ::= IDENT:id LPAREN ArgumentList:arguments RPAREN SEMIC {: RESULT = new CallStatement(new Position(idleft, idright), id, arguments); :};
+
+ArgumentList ::= Arguments:id {: RESULT = id; :}
+                    | {:RESULT = nil(); :};
+
+Arguments ::= Expression:head {: RESULT = cons(head, nil()); :}
+                    | Expression:head COMMA Arguments:tail {: RESULT = cons(head, tail); :};
+
+
+
+//TypeDefiniton
+TypeDef ::= TYPE IDENT:name EQ TypeExpression:typeEx SEMIC {: RESULT = new TypeDeclaration(new Position(nameleft, nameright), name, typeEx); :};
+
+TypeExpression ::= IDENT:id {: RESULT = new NamedTypeExpression(new Position(idleft, idright), id);:}
+                    | ARRAY LBRACK INTLIT:size RBRACK OF TypeExpression:baseType {: RESULT = new ArrayTypeExpression(new Position(sizeleft, sizeright), size, baseType);:};
+
+
+
+//IfStatment
+IfStatement ::= IF LPAREN Expression:condition RPAREN Statement:thenPart ELSE Statement:elsePart {: RESULT = new IfStatement(new Position(conditionleft, conditionright), condition, thenPart, elsePart); :}
+                    | IF LPAREN Expression:condition RPAREN Statement:then {: RESULT = new IfStatement(new Position(conditionleft, conditionright), condition, then, new EmptyStatement(new Position(conditionleft, conditionright))); :};
+
+
+
+//While"Statement"
+WhileStatement ::= WHILE LPAREN Expression:condition RPAREN Statement:body {: RESULT = new WhileStatement(new Position(conditionleft, conditionright), condition, body); :};
+
+
+
+// Assignment
+VariableAssignment ::= Variable:target ASGN Expression:value SEMIC {: RESULT = new AssignStatement(new Position(targetleft, targetright), target, value); :};
+
+Variable ::= IDENT:id {: RESULT = new NamedVariable(new Position(idleft, idright), id); :}
+                | Variable:variable LBRACK Expression:index RBRACK {: RESULT = new ArrayAccess(new Position(variableleft, variableright), variable, index); :};
+
+// Expression
+Expression ::= ComparisonExpression:id {: RESULT = id;:};
+
+AdditiveExpression ::= MultiplicativeExpression:id {: RESULT = id;:}
+                | AdditiveExpression:lop PLUS MultiplicativeExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.ADD, lop, rop); :}
+                | AdditiveExpression:lop MINUS MultiplicativeExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.SUB, lop, rop); :};
+
+MultiplicativeExpression ::= UnaryExpression:id {: RESULT = id;:}
+                | MultiplicativeExpression:lop STAR UnaryExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.MUL, lop, rop); :}
+                | MultiplicativeExpression:lop SLASH UnaryExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.DIV, lop, rop); :};
+
+UnaryExpression ::= PrimaryExpression:id {: RESULT = id;:}
+                | MINUS PrimaryExpression:rop {: RESULT = new UnaryExpression(new Position(ropleft, ropright), UnaryExpression.Operator.MINUS, rop);:};
+
+PrimaryExpression ::= INTLIT:id {: RESULT = new IntLiteral(new Position(idleft, idright), id); :}
+                | Variable:id {: RESULT = new VariableExpression(new Position(idleft, idright), id); :}
+                | LPAREN Expression:id RPAREN {: RESULT = id;:};
+
+ComparisonExpression ::= AdditiveExpression:id {: RESULT = id;:}
+                | ComparisonExpression:lop EQ AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.EQU, lop, rop); :}
+                | ComparisonExpression:lop NE AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.NEQ, lop, rop); :}
+                | ComparisonExpression:lop GT AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.GRT, lop, rop); :}
+                | ComparisonExpression:lop LT AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.LST, lop, rop); :}
+                | ComparisonExpression:lop GE AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.GRE, lop, rop); :}
+                | ComparisonExpression:lop LE AdditiveExpression:rop {: RESULT = new BinaryExpression(new Position(lopleft, lopright), BinaryExpression.Operator.LSE, lop, rop); :};
+
+
+
+
+

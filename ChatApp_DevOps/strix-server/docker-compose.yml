@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  reverse-proxy:
+    container_name: reverse-proxy
+    image: traefik:2.10.7
+    command: --providers.docker=true --metrics.prometheus=true
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+
+  strix-backend:
+    container_name: strix-backend
+    image: git-registry.thm.de/devops-projekt/strix_backend:master
+    restart: unless-stopped
+    depends_on:
+      - reverse-proxy
+    labels:
+      - traefik.http.routers.strix-backend.rule=Host(`strix.mni.thm.de`) && PathPrefix(`/api/`)
+
+
+  strix-frontend:
+    container_name: strix-frontend
+    image: git-registry.thm.de/devops-projekt/strix_frontend:master
+    restart: unless-stopped
+    depends_on:
+      - reverse-proxy
+      - strix-backend
+    labels:
+      - traefik.http.routers.strix-frontend.rule=Host(`strix.mni.thm.de`)
+
+  strix-prometheus:
+    container_name: strix-prometheus
+    image: prom/prometheus:v2.48.1
+    user: 1000:1000
+    restart: unless-stopped
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.external-url=/prometheus/'
+    depends_on:
+      - reverse-proxy
+
+  strix-nodeexporter:
+    container_name: strix-nodeexporter
+    image: prom/node-exporter:v1.7.0
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - '/:/host:ro,rslave'
+    depends_on:
+      - reverse-proxy
+    command:
+      - '--path.rootfs=/host'
+
+  strix-alertmanager:
+    container_name: strix-alertmanager
+    image: prom/alertmanager:v0.26.0
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - './config/alertmanager.yml:/config/alertmanager.yml'
+    depends_on:
+      - reverse-proxy
+      - strix-prometheus
+    command:
+      - '--config.file=/config/alertmanager.yml'
+
+  strix-grafana:
+    container_name: strix-grafana
+    image: grafana/grafana:9.5.15
+    user: 1000:1000
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/pw
+      - GF_SERVER_DOMAIN=strix.mni.thm.de
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/monitoring/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - ./config/data/grafana/db:/var/lib/grafana
+      - ./config/data/grafana/config:/etc/grafana/provisioning
+    depends_on:
+      - reverse-proxy
+      - strix-prometheus
+      - strix-nodeexporter
+    labels:
+      - traefik.http.routers.strix-grafana.rule=Host(`strix.mni.thm.de`) && PathPrefix(`/monitoring/`)
+    secrets:
+      - pw
+
+secrets:
+  pw:
+    file: /etc/secrets/pw.txt

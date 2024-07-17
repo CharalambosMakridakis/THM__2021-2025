@@ -1,0 +1,157 @@
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    height: 100px;
+    background: #333333;
+}
+
+#root {
+    background-color: #333333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 97%;
+}
+
+.globalDev
+{
+    width: 1500px;
+    background: #404040;
+    border-radius: 10px;
+}
+
+.div1{
+    max-width: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0 25px;
+    padding-top: 30px;
+    padding-bottom: 15px;
+    background: #4d4d4d;
+    border-radius: 10px;
+    margin: 10px 1px 10px 10px;
+}
+.roomQ{
+    background: #4d4d4d;
+    margin: 10px 1px 10px 10px;
+    border-radius: 10px;
+    padding: 0 25px 0 0;
+    width: 200px;
+}
+
+.div2{
+    background: #4d4d4d;
+    flex-grow: 1;
+    padding: 20px 40px;
+    max-width: 80%;
+    border-radius: 10px;
+    margin: 10px 1px 10px 10px;
+}
+
+.content__header {
+    background: #404040;
+    border-radius: 6px;
+    justify-content: space-between;
+    display: flex;
+    align-items: center;
+}
+
+.content__header h1{
+    color: white;
+    margin: 10px 1px 10px 10px;
+    font-size: 25px;
+    font-weight: bold;
+
+}
+
+
+.div4{
+    margin-top: 50px;
+    background: #404040;
+    height: 200px;
+    display: flex;
+    border-radius:10px;
+    flex-direction: column;
+}
+
+.InputButton {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 30px 10px 40px 10px;
+    justify-content: space-between;
+}
+
+.InputButton input{
+    flex-grow: 1;
+    margin-right: 20px;
+    margin-left: 5px;
+    width: 30%;
+    height: 34px;
+    background: transparent;
+    outline: none;
+    border: 2px solid #fff;
+    border-radius: 10px;
+    color: white;
+    padding: 20px 45px 20px 20px;
+}
+
+
+.InputButton input::placeholder {
+    color: #d9d9d9;
+}
+
+.InputButton button{
+    width: 45%;
+    height: 34px;
+    background: #fff;
+    border: #fff;
+    outline: none;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+    margin-right: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    transition: background-color 0.3s ease;
+}
+
+.InputButton button:hover{
+    color: white;
+    background-color:blue ;
+}
+
+.btn1{
+    width: 44%;
+    height: 34px;
+    background: #fff;
+    border: #fff;
+    outline: none;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+    margin-right: 10px;
+    margin-left: 53.1%;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    transition: background-color 0.3s ease;
+}
+
+.btn1:hover{
+    color: white;
+    background-color:green ;
+}
+
+.div5{
+    background: #4d4d4d;
+    margin: 10px 10px 10px 10px;
+    border-radius: 10px;
+    width: 15%;
+}
+
+
+
+

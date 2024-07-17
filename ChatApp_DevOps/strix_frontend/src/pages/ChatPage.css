@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.test{
+    background: #4d4d4d;
+}
+
+.test1 {
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+.tt{
+    background: #666666;
+    border: 2px solid #fff;
+}
+
+.nachricht input{
+    flex-grow: 1;
+    margin-right: 10px;
+    margin-left: 5px;
+    width: 70%;
+    height: 34px;
+    background: transparent;
+    outline: none;
+    border: 2px solid #fff;
+    border-radius: 8px;
+    color: white;
+    padding: 20px 45px 20px 20px;
+}

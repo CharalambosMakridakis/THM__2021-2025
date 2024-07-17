@@ -1,0 +1,14 @@
+.RoomHeading{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.RoomHeading h1{
+    color: white;
+    margin-left: 10px;
+    font-size: 25px;
+    font-weight: bold;
+    margin-top: 15px;
+}
+

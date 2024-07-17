@@ -1,0 +1,13 @@
+.statusHeading{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.statusHeading h1{
+    color:white;
+    margin-left: 10px;
+    font-size: 25px;
+    font-weight: bold;
+    margin-top: 15px;
+}

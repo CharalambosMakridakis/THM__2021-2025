@@ -1,0 +1,131 @@
+stages:
+  - leak
+  - test
+  - build
+  - trivy
+  - deploy
+
+gitleaks:
+  stage: leak
+  tags:
+    - allrounder-frontend
+  image:
+    name: zricethezav/gitleaks:v8.18.1
+    entrypoint: [""]
+  script:
+    - gitleaks detect -v --redact
+  allow_failure: true
+
+sonarqube-test:
+  stage: test
+  tags:
+    - allrounder-frontend
+  image:
+    name: sonarsource/sonar-scanner-cli:5
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.projectKey=${PROJECTKEY} -Dsonar.sources=. -Dsonar.host.url=${HOST} -Dsonar.login=${TOKEN}
+  only:
+    - dev
+    - master
+
+eslint-test:
+  stage: test
+  image: node:20-alpine
+  tags:
+    - allrounder-frontend
+  script:
+    - npm install eslint
+    - node_modules/eslint/bin/eslint.js .
+  only:
+    - dev
+    - master
+  allow_failure: true
+
+docker-build:   
+  stage: build
+  tags:
+    - allrounder-frontend
+  image:
+    name: gcr.io/kaniko-project/executor:v1.18.0-debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"cmkr86\",\"password\":\"$DOCKER_ACCESS_TOKEN\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+  only:
+    - dev
+    - master
+
+trivy-imagescan:
+  stage: trivy
+  image:
+    name: docker.io/aquasec/trivy:0.48.2
+    entrypoint: [""]
+  tags:
+    - allrounder-frontend
+  variables:
+    GIT_STRATEGY: none
+    TRIVY_USERNAME: "cmkr86"
+    TRIVY_PASSWORD: "$DOCKER_ACCESS_TOKEN"
+    TRIVY_AUTH_URL: "$CI_REGISTRY"
+    FULL_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  script:
+    - trivy --version
+    # cache cleanup is needed when scanning images with the same tags, it does not remove the database
+    - time trivy image --clear-cache
+    # update vulnerabilities db
+    - time trivy image --download-db-only --no-progress --cache-dir .trivycache/
+    # Builds report
+    - time trivy image --exit-code 0 --cache-dir .trivycache/ --no-progress --format template --template "@/contrib/gitlab.tpl" "$FULL_IMAGE_NAME"
+    # Prints full report
+    - time trivy image --exit-code 0 --cache-dir .trivycache/ --no-progress "$FULL_IMAGE_NAME"
+    # Fail on critical vulnerabilities
+    - time trivy image --exit-code 1 --cache-dir .trivycache/ --severity CRITICAL --no-progress "$FULL_IMAGE_NAME"
+  cache:
+    paths:
+      - .trivycache/
+  only:
+    - dev
+    - master
+
+deploy:      
+  stage: deploy
+  image: alpine:3.19.0
+  environment: production
+  tags:
+    - allrounder-frontend
+  before_script:
+    - apk update
+    - apk add openssh-client
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > id_rsa
+    - chmod 600 id_rsa
+  script:
+    - |
+      if [ $CI_COMMIT_BRANCH == "dev" ]; then 
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_DEV "echo $DOCKER_ACCESS_TOKEN | docker login $CI_REGISTRY -u cmkr86 --password-stdin"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_DEV "docker compose -f /home/devops/docker-compose.yml down || true"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_DEV "sh -c '/usr/bin/docker rmi \$(/usr/bin/docker images -q)'"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_DEV "docker compose -f /home/devops/docker-compose.yml pull"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_DEV "docker compose -f /home/devops/docker-compose.yml up -d"
+      else
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_MASTER "echo $DOCKER_ACCESS_TOKEN | docker login $CI_REGISTRY -u cmkr86 --password-stdin"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_MASTER "docker compose -f /home/devops/docker-compose.yml down || true"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_MASTER "sh -c '/usr/bin/docker rmi \$(/usr/bin/docker images -q)'"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_MASTER "docker compose -f /home/devops/docker-compose.yml pull"
+        ssh -i id_rsa -o StrictHostKeyChecking=no $SSH_MASTER "docker compose -f /home/devops/docker-compose.yml up -d"
+      fi
+  only:
+    - master
+    - dev

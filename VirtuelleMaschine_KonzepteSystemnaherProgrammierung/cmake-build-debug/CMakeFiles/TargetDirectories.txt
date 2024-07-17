@@ -1,0 +1,3 @@
+C:/Users/Nikos/Desktop/Studium/3. Semester/ksp_22/cmake-build-debug/CMakeFiles/KSP.dir
+C:/Users/Nikos/Desktop/Studium/3. Semester/ksp_22/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Nikos/Desktop/Studium/3. Semester/ksp_22/cmake-build-debug/CMakeFiles/rebuild_cache.dir

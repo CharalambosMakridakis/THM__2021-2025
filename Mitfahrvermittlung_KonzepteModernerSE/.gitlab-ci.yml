@@ -1,0 +1,37 @@
+stages:
+  - test
+
+sonarqube:
+  stage: test
+  tags:
+    - sonarqube
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.projectKey=kmstodo -Dsonar.sources=. -Dsonar.host.url=https://scm.thm.de/sonar -Dsonar.login=${SONAR_TOKEN}
+  allow_failure: true
+
+frontend-unit:
+  stage: test
+  tags:
+    - nodejs
+  script:
+    - cd frontend
+    - npm install
+    - npm run test
+  allow_failure: true
+
+frontend-lint:
+    stage: test
+    tags:
+      - nodejs
+    script:
+      - cd frontend
+      - npm install
+      - npm run lint
+    allow_failure: true

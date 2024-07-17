@@ -1,0 +1,39 @@
+stages: 
+  - build
+
+docker-build-frontend:   
+  stage: build
+  tags:
+    - ca
+  image:
+    name: gcr.io/kaniko-project/executor:v1.18.0-debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"cmkr86\",\"password\":\"$DOCKER_ACCESS_TOKEN\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/frontend"
+      --dockerfile "${CI_PROJECT_DIR}/frontend/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}:frontend"
+  only:
+    - master
+
+
+docker-build-backend:   
+  stage: build
+  tags:
+    - ca
+  image:
+    name: gcr.io/kaniko-project/executor:v1.18.0-debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"cmkr86\",\"password\":\"$DOCKER_ACCESS_TOKEN\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/backend"
+      --dockerfile "${CI_PROJECT_DIR}/backend/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}:backend"
+  only:
+    - master

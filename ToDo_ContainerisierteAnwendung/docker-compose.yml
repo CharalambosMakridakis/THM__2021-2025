@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  reverse-proxy:
+    container_name: reverse-proxy
+    image: traefik:3.0
+    command: --providers.docker=true --entrypoints.appui.address=:8000 --entrypoints.web.address=:80
+    ports:
+      - 80:80
+      - 8000:8000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - DB_DATABASE_FILE=/run/secrets/mariadb_db
+      - DB_PASSWORD_FILE=/run/secrets/mariadb_password
+      - DB_USER_FILE=/run/secrets/mariadb_user
+    depends_on:
+      - maria-db
+      - reverse-proxy
+    secrets:
+      - mariadb_db
+      - mariadb_password
+      - mariadb_user
+    labels:
+      - traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/api/`)
+      - traefik.http.routers.backend.entrypoints=web
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - reverse-proxy
+    labels:
+      - traefik.http.routers.frontend.rule=Host(`localhost`)
+      - traefik.http.routers.frontend.entrypoints=appui
+
+  maria-db:
+    image: mariadb:10.6.16
+    container_name: maria-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: 1
+      MARIADB_DATABASE_FILE: /run/secrets/mariadb_db
+      MARIADB_PASSWORD_FILE: /run/secrets/mariadb_password
+      MARIADB_USER_FILE: /run/secrets/mariadb_user
+    volumes:
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/src/data:/var/lib/mysql
+    secrets:
+      - mariadb_db
+      - mariadb_password
+      - mariadb_user
+
+  adminer:
+    image: adminer:4.8.1
+    container_name: adminer
+    restart: unless-stopped
+    depends_on:
+      - maria-db
+      - reverse-proxy
+    labels:
+      - traefik.http.routers.adminer.rule=Host(`localhost`) && PathPrefix(`/adminer`)
+      - traefik.http.routers.adminer.entrypoints=appui
+
+secrets:
+  mariadb_db:
+    file: secrets/mariadb_db.txt
+  mariadb_password:
+    file: secrets/mariadb_password.txt
+  mariadb_user:
+    file: secrets/mariadb_user.txt
